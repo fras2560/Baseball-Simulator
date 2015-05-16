@@ -9,7 +9,7 @@ Email:   fras2560@mylaurier.ca
 Version: 2014-09-11
 -------------------------------------------------------
 """
-HITS = ["S","D", "GO", "PF", "HR"]
+HITS = ["S","D", "GO", "PF", "HR", "K"]
 import logging
 from random import randint
 
@@ -30,7 +30,7 @@ class Player():
         for hit in HITS:
             count[hit] = 0
         for hit in hits:
-            hit = hit.strip()
+            hit = hit.strip().upper()
             if hit in count:
                 count[hit] += 1
                 recognized += 1
@@ -54,6 +54,11 @@ class Player():
     def hit(self):
         hit = self.lookup[randint(0, self.length - 1)]
         self.logger.debug("%s with a %s" % (self.name, hit))
+        return hit
+
+    def hit_p(self):
+        hit = self.lookup[randint(0, self.length - 1)]
+        self.logger.info("%s with a %s" % (self.name, hit))
         return hit
 
     def is_girl(self):

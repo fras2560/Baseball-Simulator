@@ -11,12 +11,16 @@ Version: 2014-09-11
 -------------------------------------------------------
 """
 import logging
-from player import Player
-from game import Game
-from helpers import pstdev
+from simulator.player import Player
+from simulator.game import Game
+from simulator.helpers import pstdev
 import random
 from copy import deepcopy
 from pprint import PrettyPrinter
+import sys
+from simulator.tqdm import tqdm
+
+SEPERATOR = "----------------------------------------"
 class Simulator():
     def __init__(self, file, logger=None):
         if logger is None:
@@ -37,21 +41,66 @@ class Simulator():
                 name = data[0]
                 gender = data[1]
                 hits = data[2:]
-                if gender == "F":
-                    self.girls.append(Player(name, hits, gender))
+                if gender.strip().upper() == "F":
+                    self.girls.append(Player(name,
+                                             hits,
+                                             gender,
+                                             logger=self.logger))
                 else:
-                    self.boys.append(Player(name, hits, gender))
+                    self.boys.append(Player(name,
+                                            hits,
+                                            gender,
+                                            logger=self.logger))
 
     def run(self, lineups, games):
-        stats = {}
-        for options in  range(0, lineups):
+        self.stats = []
+        for options in  tqdm(range(0, lineups)):
+            #self.update_progress(options, lineups)
             lineup = self.assemble_lineup()
             scores = []
             for game in range(0, games):
-                scores.append(Game(lineup).run())
-            stats[lineup] = (sum(scores)/games, pstdev(scores))
-        self.pp.pprint(stats)
+                score = Game(lineup, logger=self.logger).run()
+                scores.append(score)
+            self.stats.append((sum(scores)/games, pstdev(scores), lineup))
+        self.display_results()
 
+    def display_results(self):
+        optimal = self.find_agressive()
+        conservative = self.find_conservative()
+        print("Conservative: {0:.2f} +- {1:.2f}".format(conservative[0], conservative[1]))
+        print(SEPERATOR)
+        for player in conservative[2]:
+            print(player)
+        print(SEPERATOR)
+        print("Agressive: {0:.2f} +- {1:.2f}".format(optimal[0], optimal[1]))
+        print(SEPERATOR)
+        for player in optimal[2]:
+            print(player)
+        print(SEPERATOR)
+        print("Simulation of Conservative")
+        logging.basicConfig(level=logging.DEBUG,
+                            format='%(asctime)s %(message)s')
+        self.logger = logging.getLogger(__name__)
+        Game(conservative[2], logger=self.logger).run_p()
+
+    def update_progress(self, runs, total):
+        progress = runs / total
+        sys.stdout.write("\r{0:.2f}%".format(progress))
+        sys.stdout.flush()
+
+    def find_agressive(self):
+        result = self.stats[0]
+        for sim in self.stats:
+            if sim[0] > result[0]:
+                result = sim
+        return result
+
+    def find_conservative(self):
+        result = self.stats[0]
+        for sim in self.stats:
+            if sim[0]- 3*sim[1] > result[0] - 3 * result[1]:
+                result = sim
+        return result
     def assemble_lineup(self):
         guy_count = 0
         girls = self.copy_list(self.girls)

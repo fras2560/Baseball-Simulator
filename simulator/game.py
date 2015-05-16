@@ -10,7 +10,7 @@ Version: 2014-09-11
 -------------------------------------------------------
 """
 import logging
-HITS = {"PF": -1, "GO": -1, "D": 2, "HR": 4, "S": 1}
+HITS = {"PF": -1, "GO": -1, "D": 2, "HR": 4, "S": 1, "K": -1}
 
 class Game():
     def __init__(self, players, innings=5, logger=None):
@@ -42,8 +42,31 @@ class Game():
             self.atbat = (self.atbat + 1) % len(self.players)
             # if three outs then inning is done
             if self.outs >= 3:
+                self.logger.debug("-------------------------------")
+                self.logger.debug("End of Inning %s" % self.inning)
                 self.outs = 0
+                self.clear_bases()
                 self.inning += 1
+        return self.score
+
+    def run_p(self):
+        self.reset()
+        while self.inning <= self.innings:
+            hit = self.players[self.atbat].hit_p()
+            if HITS[hit] > 0:
+                self.advance_runners(HITS[hit])
+            else:
+                self.outs += 1
+            # move through the order
+            self.atbat = (self.atbat + 1) % len(self.players)
+            # if three outs then inning is done
+            if self.outs >= 3:
+                self.logger.info("-------------------------------")
+                self.logger.info("End of Inning %s" % self.inning)
+                self.outs = 0
+                self.clear_bases()
+                self.inning += 1
+        self.logger.info("End score %s" % self.score)
         return self.score
 
     def advance_runners(self, advance):
@@ -64,8 +87,10 @@ class Game():
             self.bases[advance-1] = 1
         return
 
+    def clear_bases(self):
+        self.bases = [0, 0, 0]
 import unittest
-from player import Player
+from simulator.player import Player
 
 class TestGame(unittest.TestCase):
 
